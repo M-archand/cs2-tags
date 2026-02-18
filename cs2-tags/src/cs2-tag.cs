@@ -5,7 +5,6 @@ using CounterStrikeSharp.API.Core.Capabilities;
 using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Commands;
-using CounterStrikeSharp.API.Modules.UserMessages;
 using CounterStrikeSharp.API.Modules.Utils;
 using TagsApi;
 using static Tags.TagExtensions;
@@ -16,7 +15,7 @@ namespace Tags;
 public class Tags : BasePlugin, IPluginConfig<Config>
 {
     public override string ModuleName => "Tags";
-    public override string ModuleVersion => "1.14";
+    public override string ModuleVersion => "1.15 (updated by Marchand)";
     public override string ModuleAuthor => "schwarper";
 
     public static readonly Dictionary<ulong, Tag> PlayerTagsList = [];
@@ -34,8 +33,10 @@ public class Tags : BasePlugin, IPluginConfig<Config>
 
         foreach (string command in Config.Commands.Visibility)
             AddCommand(command, "Visibility", Command_Visibility);
-
-        HookUserMessage(118, OnMessage, HookMode.Pre);
+        
+        AddCommandListener("say", OnSayCommand, HookMode.Pre);
+        AddCommandListener("say_team", OnSayTeamCommand, HookMode.Pre);
+        
         AddCommandListener("css_admins_reload", Command_Admins_Reloads, HookMode.Pre);
 
         if (hotReload)
@@ -44,8 +45,9 @@ public class Tags : BasePlugin, IPluginConfig<Config>
 
     public override void Unload(bool hotReload)
     {
-        UnhookUserMessage(118, OnMessage, HookMode.Pre);
         RemoveCommandListener("css_admins_reload", Command_Admins_Reloads, HookMode.Pre);
+        RemoveCommandListener("say", OnSayCommand, HookMode.Pre);
+        RemoveCommandListener("say_team", OnSayTeamCommand, HookMode.Pre);
     }
 
     public void OnConfigParsed(Config config)
@@ -120,9 +122,44 @@ public class Tags : BasePlugin, IPluginConfig<Config>
         return HookResult.Continue;
     }
 
-    public HookResult OnMessage(UserMessage um)
+    public HookResult OnSayCommand(CCSPlayerController? player, CommandInfo info)
     {
-        if (Utilities.GetPlayerFromIndex(um.ReadInt("entityindex")) is not CCSPlayerController player || player.IsBot)
+        if (player == null || player.IsBot)
+            return HookResult.Continue;
+
+        string message = info.GetArg(1);
+        if (string.IsNullOrEmpty(message))
+            return HookResult.Continue;
+
+        return ProcessChatCommand(player, message, false);
+    }
+    
+    public HookResult OnSayTeamCommand(CCSPlayerController? player, CommandInfo info)
+    {
+        if (player == null || player.IsBot)
+            return HookResult.Continue;
+
+        string message = info.GetArg(1);
+        if (string.IsNullOrEmpty(message))
+            return HookResult.Continue;
+
+        return ProcessChatCommand(player, message, true);
+    }
+
+    private static bool IsCssChatCommand(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return false;
+        var span = text.AsSpan();
+        int i = 0;
+        while (i < span.Length && char.IsWhiteSpace(span[i])) i++;
+        if (i >= span.Length) return false;
+        char c = span[i];
+        return c == '!' || c == '/' || c == '.';
+    }
+
+    private HookResult ProcessChatCommand(CCSPlayerController player, string message, bool teamMessage)
+    {
+        if (IsCssChatCommand(message))
             return HookResult.Continue;
 
         var tag = GetOrCreatePlayerTag(player, false);
@@ -131,14 +168,11 @@ public class Tags : BasePlugin, IPluginConfig<Config>
         {
             Player = player,
             Tag = !player.GetVisibility() ? Config.Default.Clone() : tag.Clone(),
-            Message = um.ReadString("param2").RemoveCurlyBraceContent(),
-            PlayerName = um.ReadString("param1"),
-            ChatSound = um.ReadBool("chat"),
-            TeamMessage = !um.ReadString("messagename").Contains("All")
+            Message = message.RemoveCurlyBraceContent(),
+            PlayerName = player.PlayerName,
+            ChatSound = tag.ChatSound,
+            TeamMessage = teamMessage
         };
-
-        if (string.IsNullOrEmpty(messageProcess.Message))
-            return HookResult.Handled;
 
         HookResult hookResult = Api.MessageProcessPre(messageProcess);
 
@@ -159,11 +193,25 @@ public class Tags : BasePlugin, IPluginConfig<Config>
         if (hookResult >= HookResult.Handled)
             return hookResult;
 
-        um.SetString("messagename", $"{messageProcess.PlayerName}{ChatColors.White}: {messageProcess.Message}");
-        um.SetBool("chat", playerData.ChatSound);
+        // Send the formatted message
+        string formattedMessage = $"{messageProcess.PlayerName}{ChatColors.White}: {messageProcess.Message}";
+
+        if (messageProcess.TeamMessage)
+        {
+            // Send to team only
+            foreach (var p in Utilities.GetPlayers().Where(p => p.Team == player.Team && p.IsValid))
+            {
+                p.PrintToChat(formattedMessage);
+            }
+        }
+        else
+        {
+            // Send to all players
+            Server.PrintToChatAll(formattedMessage);
+        }
 
         Api.MessageProcessPost(messageProcess);
 
-        return HookResult.Changed;
+        return HookResult.Handled; // Block the original message
     }
 }
