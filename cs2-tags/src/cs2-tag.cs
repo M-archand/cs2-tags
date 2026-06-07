@@ -92,12 +92,17 @@ public class Tags : BasePlugin, IPluginConfig<Config>
         ReloadTags();
     }
 
-    [RequiresPermissions("@css/admin")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void Command_Visibility(CCSPlayerController? player, CommandInfo info)
     {
         if (player == null)
         {
+            return;
+        }
+
+        if (!player.HasVisibilityPermission())
+        {
+            info.ReplyToCommand(Config.Settings.Tag + Localizer.ForPlayer(player, "Missing required permission to use this command."));
             return;
         }
 

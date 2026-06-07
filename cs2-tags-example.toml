@@ -5,6 +5,9 @@ NoneName = "{White}(NONE)"
 SpecName = "{Purple}(SPEC)"
 TName = "{Yellow}(T)"
 CTName = "{Blue}(CT)"
+# Permissions allowed to use the visibility toggle command.
+# '#' prefix = admin group, otherwise a permission flag. Empty list = no permission required.
+VisibilityPermissions = [ "@css/admin" ]
 
 [Commands]
 TagsReload = [ "css_tags_reload" ]

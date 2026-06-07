@@ -75,6 +75,29 @@ public static partial class TagExtensions
         return permissionTag ?? Instance.Config.Default.Clone();
     }
 
+    public static bool HasVisibilityPermission(this CCSPlayerController player)
+    {
+        List<string> perms = Instance.Config.Settings.VisibilityPermissions;
+        if (perms is not { Count: > 0 })
+            return true;
+
+        SteamID steamID = new(player.SteamID);
+        foreach (string perm in perms)
+        {
+            if (perm.Length == 0)
+                continue;
+
+            bool allowed = perm[0] == '#'
+                ? AdminManager.PlayerInGroup(steamID, perm)
+                : AdminManager.PlayerHasPermissions(steamID, perm);
+
+            if (allowed)
+                return true;
+        }
+
+        return false;
+    }
+
     public static string GetPrePostValue(TagPrePost prePost, string? oldValue, string newValue)
     {
         return prePost switch

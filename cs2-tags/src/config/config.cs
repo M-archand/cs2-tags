@@ -21,6 +21,7 @@ public class Settings
     public string SpecName { get; set; } = string.Empty;
     public string TName { get; set; } = string.Empty;
     public string CTName { get; set; } = string.Empty;
+    public List<string> VisibilityPermissions { get; set; } = ["@css/admin", "@css/root"];
     public Dictionary<CsTeam, string> TeamNames = [];
 
     public void Init()
