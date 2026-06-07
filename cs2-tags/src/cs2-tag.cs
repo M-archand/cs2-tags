@@ -114,11 +114,11 @@ public class Tags : BasePlugin, IPluginConfig<Config>
     [GameEventHandler(HookMode.Pre)]
     public HookResult OnPlayerSpawn(EventPlayerSpawn @event, GameEventInfo info)
     {
-        if (@event.Userid is not { } player || player.IsBot)
+        if (@event.Userid is not CCSPlayerController player || player.IsBot)
             return HookResult.Continue;
 
         var tag = GetOrCreatePlayerTag(player, false);
-        player.SetScoreTag(tag.ScoreTag);
+        player.SetScoreTag(tag.ScoreTag, force: true);
         return HookResult.Continue;
     }
 

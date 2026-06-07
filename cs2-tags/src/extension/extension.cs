@@ -87,6 +87,9 @@ public static partial class TagExtensions
 
     public static void AddAttribute(this CCSPlayerController player, TagType types, TagPrePost prePost, string newValue)
     {
+        if (!player.IsValid)
+            return;
+
         Tag tag = GetOrCreatePlayerTag(player, false);
 
         Tags.Api.TagsUpdatedPre(player, tag);
@@ -109,6 +112,9 @@ public static partial class TagExtensions
 
     public static void SetAttribute(this CCSPlayerController player, TagType types, string newValue)
     {
+        if (!player.IsValid)
+            return;
+
         Tag tag = GetOrCreatePlayerTag(player, false);
 
         Tags.Api.TagsUpdatedPre(player, tag);
@@ -130,6 +136,9 @@ public static partial class TagExtensions
 
     public static string? GetAttribute(this CCSPlayerController player, TagType type)
     {
+        if (!player.IsValid)
+            return null;
+
         Tag tag = GetOrCreatePlayerTag(player, false);
 
         return type switch
@@ -144,6 +153,9 @@ public static partial class TagExtensions
 
     public static void ResetAttribute(this CCSPlayerController player, TagType types)
     {
+        if (!player.IsValid)
+            return;
+
         Tag tag = GetOrCreatePlayerTag(player, false);
         Tag defaultTag = player.GetTag();
 
@@ -166,6 +178,9 @@ public static partial class TagExtensions
 
     public static bool GetChatSound(this CCSPlayerController player)
     {
+        if (!player.IsValid)
+            return false;
+
         if (PlayerTagsList.TryGetValue(player.SteamID, out Tag? tag))
             return tag.ChatSound;
 
@@ -176,6 +191,9 @@ public static partial class TagExtensions
 
     public static void SetChatSound(this CCSPlayerController player, bool value)
     {
+        if (!player.IsValid)
+            return;
+
         Tag tag = GetOrCreatePlayerTag(player, false);
 
         Tags.Api.TagsUpdatedPre(player, tag);
@@ -185,6 +203,9 @@ public static partial class TagExtensions
 
     public static bool GetVisibility(this CCSPlayerController player)
     {
+        if (!player.IsValid)
+            return false;
+
         if (PlayerTagsList.TryGetValue(player.SteamID, out Tag? tag))
             return tag.Visibility;
 
@@ -195,6 +216,9 @@ public static partial class TagExtensions
 
     public static void SetVisibility(this CCSPlayerController player, bool value)
     {
+        if (!player.IsValid)
+            return;
+
         Tag tag = GetOrCreatePlayerTag(player, false);
 
         Tags.Api.TagsUpdatedPre(player, tag);
@@ -203,14 +227,17 @@ public static partial class TagExtensions
         Tags.Api.TagsUpdatedPost(player, tag);
     }
 
-    public static void SetScoreTag(this CCSPlayerController player, string? tag)
+    public static void SetScoreTag(this CCSPlayerController player, string? tag, bool force = false)
     {
-        if (tag != null && player.Clan != tag)
-        {
-            player.Clan = tag;
-            Utilities.SetStateChanged(player, "CCSPlayerController", "m_szClan");
-            new EventNextlevelChanged(false).FireEventToClient(player);
-        }
+        if (tag == null || !player.IsValid)
+            return;
+
+        if (!force && player.Clan == tag)
+            return;
+
+        player.Clan = tag;
+        Utilities.SetStateChanged(player, "CCSPlayerController", "m_szClan");
+        new EventNextlevelChanged(false).FireEventToClient(player);
     }
 
     public static void ReloadConfig()
