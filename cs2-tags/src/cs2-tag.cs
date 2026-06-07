@@ -140,7 +140,7 @@ public class Tags : BasePlugin, IPluginConfig<Config>
             return HookResult.Continue;
 
         var tag = GetOrCreatePlayerTag(player, false);
-        player.SetScoreTag(tag.ScoreTag, force: true);
+        player.SetScoreTag(player.GetVisibility() ? tag.ScoreTag : string.Empty, force: true);
         return HookResult.Continue;
     }
 

@@ -251,11 +251,23 @@ public static partial class TagExtensions
         List<CCSPlayerController> players = Utilities.GetPlayers();
         foreach (CCSPlayerController player in players)
         {
-            if (player.IsBot)
+            if (player.IsBot || !player.IsValid)
                 continue;
 
+            // Preserve player tag state across config reloads
+            bool visibility = true;
+            bool chatSound = true;
+            if (PlayerTagsList.TryGetValue(player.SteamID, out Tag? old) && old is not null)
+            {
+                visibility = old.Visibility;
+                chatSound = old.ChatSound;
+            }
+
             Tag tag = GetOrCreatePlayerTag(player, true);
-            player.SetScoreTag(tag.ScoreTag);
+            tag.Visibility = visibility;
+            tag.ChatSound = chatSound;
+
+            player.SetScoreTag(visibility ? tag.ScoreTag : string.Empty);
         }
     }
 }
