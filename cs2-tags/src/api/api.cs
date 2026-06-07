@@ -27,7 +27,7 @@ public class TagsAPI : ITagApi
 
         try
         {
-            return OnMessageProcessPre?.Invoke(messageProcess) ?? HookResult.Continue;
+            return InvokeHighest(OnMessageProcessPre, messageProcess);
         }
         finally
         {
@@ -44,12 +44,29 @@ public class TagsAPI : ITagApi
 
         try
         {
-            return OnMessageProcess?.Invoke(messageProcess) ?? HookResult.Continue;
+            return InvokeHighest(OnMessageProcess, messageProcess);
         }
         finally
         {
             _isProcessingMessage = false;
         }
+    }
+
+    // Return highest HookResult across all message subscribers instead of last
+    private static HookResult InvokeHighest(Func<MessageProcess, HookResult>? handlers, MessageProcess messageProcess)
+    {
+        if (handlers is null)
+            return HookResult.Continue;
+
+        HookResult result = HookResult.Continue;
+        foreach (Func<MessageProcess, HookResult> handler in handlers.GetInvocationList().Cast<Func<MessageProcess, HookResult>>())
+        {
+            HookResult current = handler(messageProcess);
+            if (current > result)
+                result = current;
+        }
+
+        return result;
     }
 
     public void MessageProcessPost(MessageProcess messageProcess)
