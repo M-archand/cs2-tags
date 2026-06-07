@@ -26,10 +26,14 @@ public class Settings
     public void Init()
     {
         Tag = Tag.ReplaceColorTags();
-        TeamNames[CsTeam.None] = NoneName;
-        TeamNames[CsTeam.Spectator] = SpecName;
-        TeamNames[CsTeam.Terrorist] = TName;
-        TeamNames[CsTeam.CounterTerrorist] = CTName;
+
+        TeamNames = new Dictionary<CsTeam, string>
+        {
+            [CsTeam.None] = NoneName,
+            [CsTeam.Spectator] = SpecName,
+            [CsTeam.Terrorist] = TName,
+            [CsTeam.CounterTerrorist] = CTName,
+        };
     }
 }
 

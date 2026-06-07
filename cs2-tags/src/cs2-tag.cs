@@ -9,6 +9,7 @@ using CounterStrikeSharp.API.Modules.Utils;
 using TagsApi;
 using static Tags.TagExtensions;
 using static TagsApi.Tags;
+using System.Collections.Concurrent;
 
 namespace Tags;
 
@@ -18,10 +19,13 @@ public class Tags : BasePlugin, IPluginConfig<Config>
     public override string ModuleVersion => "1.15 (updated by Marchand)";
     public override string ModuleAuthor => "schwarper";
 
-    public static readonly Dictionary<ulong, Tag> PlayerTagsList = [];
+    public static readonly ConcurrentDictionary<ulong, Tag> PlayerTagsList = new();
     public static readonly TagsAPI Api = new();
-    public static Tags Instance { get; set; } = new();
+    public static Tags Instance { get; private set; } = null!;
     public Config Config { get; set; } = new();
+
+    private readonly List<string> _tagsReloadCommands = [];
+    private readonly List<string> _visibilityCommands = [];
 
     public override void Load(bool hotReload)
     {
@@ -29,10 +33,16 @@ public class Tags : BasePlugin, IPluginConfig<Config>
         Capabilities.RegisterPluginCapability(ITagApi.Capability, () => Api);
 
         foreach (string command in Config.Commands.TagsReload)
+        {
             AddCommand(command, "Tags Reload", Command_Tags_Reload);
+            _tagsReloadCommands.Add(command);
+        }
 
         foreach (string command in Config.Commands.Visibility)
+        {
             AddCommand(command, "Visibility", Command_Visibility);
+            _visibilityCommands.Add(command);
+        }
         
         AddCommandListener("say", OnSayCommand, HookMode.Pre);
         AddCommandListener("say_team", OnSayTeamCommand, HookMode.Pre);
@@ -45,6 +55,14 @@ public class Tags : BasePlugin, IPluginConfig<Config>
 
     public override void Unload(bool hotReload)
     {
+        foreach (string command in _tagsReloadCommands)
+            RemoveCommand(command, Command_Tags_Reload);
+        _tagsReloadCommands.Clear();
+
+        foreach (string command in _visibilityCommands)
+            RemoveCommand(command, Command_Visibility);
+        _visibilityCommands.Clear();
+
         RemoveCommandListener("css_admins_reload", Command_Admins_Reloads, HookMode.Pre);
         RemoveCommandListener("say", OnSayCommand, HookMode.Pre);
         RemoveCommandListener("say_team", OnSayTeamCommand, HookMode.Pre);
@@ -64,7 +82,7 @@ public class Tags : BasePlugin, IPluginConfig<Config>
     }
 
     [RequiresPermissions("@css/root")]
-    public static void Command_Tags_Reload(CCSPlayerController? player, CommandInfo info)
+    public void Command_Tags_Reload(CCSPlayerController? player, CommandInfo info)
     {
         ReloadConfig();
         ReloadTags();
@@ -94,7 +112,7 @@ public class Tags : BasePlugin, IPluginConfig<Config>
     [GameEventHandler]
     public HookResult OnPlayerConnect(EventPlayerConnectFull @event, GameEventInfo info)
     {
-        if (@event.Userid is not CCSPlayerController player || player.IsBot)
+        if (@event.Userid is not CCSPlayerController player || player.IsBot || player.SteamID == 0)
             return HookResult.Continue;
 
         PlayerTagsList[player.SteamID] = player.GetTag();
@@ -104,17 +122,17 @@ public class Tags : BasePlugin, IPluginConfig<Config>
     [GameEventHandler(HookMode.Pre)]
     public HookResult OnPlayerDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
     {
-        if (@event.Userid is not CCSPlayerController player || player.IsBot)
+        if (@event.Userid is not CCSPlayerController player || player.IsBot || player.SteamID == 0)
             return HookResult.Continue;
 
-        PlayerTagsList.Remove(player.SteamID);
+        PlayerTagsList.TryRemove(player.SteamID, out _);
         return HookResult.Continue;
     }
 
     [GameEventHandler(HookMode.Pre)]
     public HookResult OnPlayerSpawn(EventPlayerSpawn @event, GameEventInfo info)
     {
-        if (@event.Userid is not CCSPlayerController player || player.IsBot)
+        if (@event.Userid is not CCSPlayerController player || player.IsBot || player.SteamID == 0)
             return HookResult.Continue;
 
         var tag = GetOrCreatePlayerTag(player, false);

@@ -223,7 +223,7 @@ public static partial class TagExtensions
 
         Tags.Api.TagsUpdatedPre(player, tag);
         tag.Visibility = value;
-        player.SetScoreTag(value ? player.GetAttribute(TagType.ScoreTag) : Instance.Config.Default.ScoreTag);
+        player.SetScoreTag(value ? player.GetAttribute(TagType.ScoreTag) : string.Empty);
         Tags.Api.TagsUpdatedPost(player, tag);
     }
 
