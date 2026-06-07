@@ -16,12 +16,17 @@ namespace Tags;
 public class Tags : BasePlugin, IPluginConfig<Config>
 {
     public override string ModuleName => "Tags";
-    public override string ModuleVersion => "1.15 (updated by Marchand)";
-    public override string ModuleAuthor => "schwarper";
+    public override string ModuleVersion => "1.2.0";
+    public override string ModuleAuthor => "schwarper, Marchand";
 
     public static readonly ConcurrentDictionary<ulong, Tag> PlayerTagsList = new();
     public static readonly TagsAPI Api = new();
-    public static Tags Instance { get; private set; } = null!;
+    private static Tags? _instance;
+    public static Tags Instance
+    {
+        get => _instance ?? throw new InvalidOperationException("Tags.Instance accessed before Load() completed.");
+        private set => _instance = value;
+    }
     public Config Config { get; set; } = new();
 
     private readonly List<string> _tagsReloadCommands = [];
@@ -46,7 +51,6 @@ public class Tags : BasePlugin, IPluginConfig<Config>
         
         AddCommandListener("say", OnSayCommand, HookMode.Pre);
         AddCommandListener("say_team", OnSayTeamCommand, HookMode.Pre);
-        
         AddCommandListener("css_admins_reload", Command_Admins_Reloads, HookMode.Pre);
 
         if (hotReload)
