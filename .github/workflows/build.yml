@@ -1,87 +1,146 @@
-name: Build & Publish cs2-tags
+name: Build & Release
 
 on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - 'README.md'
-      - '.github/workflows/**'
-      - 'cs2-tags-example.toml'
-      - 'cs2-tags-api-test/**'
+  workflow_dispatch:
 
 jobs:
-  setup:
+  build-and-release:
+    runs-on: ubuntu-latest
+
     permissions:
       contents: write
-    runs-on: ubuntu-latest
-    outputs:
-      buildnumber: ${{ steps.buildnumber.outputs.build_number }}
+
     steps:
-      - name: Generate build number
-        id: buildnumber
-        uses: onyxmueller/build-tag-number@v1
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
-  build:
-    needs: setup
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Prepare Environment Variables
-        shell: bash
+      - name: Extract version from ModuleVersion
+        id: version
         run: |
-          echo "GITHUB_SHA_SHORT=${GITHUB_SHA::7}" >> $GITHUB_ENV
-          echo "BUILD_NUMBER=${{ needs.setup.outputs.buildnumber }}" >> $GITHUB_ENV
-
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+          VERSION=$(grep -oP 'ModuleVersion\s*=>\s*\$?"\K[^"]+' cs2-tags/src/cs2-tag.cs | head -n1)
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not find ModuleVersion in cs2-tags/src/cs2-tag.cs"
+            exit 1
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Found version: $VERSION"
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: "10.0.x"
+          cache: true
+          cache-dependency-path: "**/*.csproj"
 
-      - name: Restore Dependencies
-        run: dotnet restore
-
-      - name: Build
+      - name: Build TagsApi
         run: |
-          dotnet build cs2-tags.sln -c Release --no-restore /p:Version=1.${{ env.BUILD_NUMBER }}
+          dotnet restore TagsApi/TagsApi.csproj
+          dotnet build TagsApi/TagsApi.csproj -c Release --no-restore /p:Version=${{ steps.version.outputs.version }}
 
-      - name: Create Release Artifact (ZIP) from BuildOutput
+      - name: Build cs2-tags plugin
         run: |
-          mkdir -p release
-          cd BuildOutput
-          zip -r ../cs2-tags-v1.${{ env.BUILD_NUMBER }}.zip .
+          dotnet restore cs2-tags/cs2-tags.csproj
+          dotnet build cs2-tags/cs2-tags.csproj -c Release --no-restore /p:Version=${{ steps.version.outputs.version }}
+
+      - name: Assemble release package
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          FOLDER="cs2-tags-v${VERSION}"
+
+          # cs2-tags csprojs emit the CSS install tree into BuildOutput/:
+          #   plugins/cs2-tags/        -> plugin dll + deps + example config
+          #   shared/TagsApi/          -> API dll (consumed by other plugins)
+          #   configs/plugins/cs2-tags/-> cs2-tags-example.toml
+          if [ ! -f BuildOutput/plugins/cs2-tags/cs2-tags.dll ]; then
+            echo "::error::cs2-tags.dll not found in BuildOutput/plugins/cs2-tags after build"
+            exit 1
+          fi
+          if [ ! -f BuildOutput/shared/TagsApi/TagsApi.dll ]; then
+            echo "::error::TagsApi.dll not found in BuildOutput/shared/TagsApi after build"
+            exit 1
+          fi
+
+          rm -rf package
+          mkdir -p "package/${FOLDER}"
+          cp -r BuildOutput/. "package/${FOLDER}/"
+
+          cd package
+          zip -r "../${FOLDER}.zip" "${FOLDER}"
+          cd ..
+          echo "Created ${FOLDER}.zip"
+
+      - name: Prepare release artifact
+        id: zip
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          ZIP_SRC=$(find . -name "cs2-tags-v${VERSION}.zip" -not -path "./release-artifacts/*" | head -1)
+          if [ -z "$ZIP_SRC" ]; then
+            echo "::error::cs2-tags-v${VERSION}.zip not found after build"
+            exit 1
+          fi
+          echo "Found zip: $ZIP_SRC"
+
+          mkdir -p release-artifacts
+          NEW_NAME="cs2-tags-v${VERSION}.zip"
+          mv "$ZIP_SRC" "release-artifacts/$NEW_NAME"
+          echo "artifact=release-artifacts/$NEW_NAME" >> $GITHUB_OUTPUT
+          echo "Prepared: $NEW_NAME"
+
+      - name: Determine release tag
+        id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          REPO_NAME="${{ github.event.repository.name }}"
+          BASE_TAG="v${VERSION}"
+          TAG="$BASE_TAG"
+          TITLE="${BASE_TAG}"
+          BUILD_NUM=1
+
+          while gh release view "$TAG" &>/dev/null; do
+            BUILD_NUM=$((BUILD_NUM + 1))
+            TAG="${BASE_TAG}-${BUILD_NUM}"
+            TITLE="${REPO_NAME} | ${BASE_TAG}#${BUILD_NUM}"
+            echo "Tag exists, trying: $TAG"
+          done
+
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
+          echo "Using tag: $TAG"
+
+      - name: Get previous tag for changelog link
+        id: prev_tag
+        run: |
+          PREV=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          echo "prev_tag=$PREV" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v1.${{ env.BUILD_NUMBER }}
-          release_name: v1.${{ env.BUILD_NUMBER }}
-          draft: false
-          prerelease: false
-          body: |
-            ## Release Notes for v1.${{ env.BUILD_NUMBER }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.tag.outputs.tag }}"
+          TITLE="${{ steps.tag.outputs.title }}"
+          PREV_TAG="${{ steps.prev_tag.outputs.prev_tag }}"
 
-            ### Changes:
-            - ${{ github.event.head_commit.message }}
+          PRERELEASE_FLAG=""
+          if [[ "$VERSION" == *-* ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
 
-            ### Feedback:
-            - If you encounter any issues, please report them [here](https://github.com/${{ github.repository }}/issues).
+          NOTES="Release ${TAG}"
+          if [ -n "$PREV_TAG" ]; then
+            NOTES="${NOTES}"$'\n\n'"**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${TAG}"
+          fi
 
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./cs2-tags-v1.${{ env.BUILD_NUMBER }}.zip
-          asset_name: cs2-tags-v1.${{ env.BUILD_NUMBER }}.zip
-          asset_content_type: application/zip
+          gh release create "$TAG" \
+            --title "$TITLE" \
+            --notes "$NOTES" \
+            $PRERELEASE_FLAG \
+            "${{ steps.zip.outputs.artifact }}"
+
+          echo "Release $TAG created successfully!"
