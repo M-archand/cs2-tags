@@ -177,6 +177,9 @@ public class Tags : BasePlugin, IPluginConfig<Config>
 
     private HookResult ProcessChatCommand(CCSPlayerController player, string message, bool teamMessage)
     {
+        if (!player.IsValid)
+            return HookResult.Continue;
+
         if (IsCssChatCommand(message))
             return HookResult.Continue;
 
@@ -217,9 +220,10 @@ public class Tags : BasePlugin, IPluginConfig<Config>
         if (messageProcess.TeamMessage)
         {
             // Send to team only
-            foreach (var p in Utilities.GetPlayers().Where(p => p.Team == player.Team && p.IsValid))
+            foreach (var p in Utilities.GetPlayers())
             {
-                p.PrintToChat(formattedMessage);
+                if (p.IsValid && p.Team == player.Team)
+                    p.PrintToChat(formattedMessage);
             }
         }
         else
