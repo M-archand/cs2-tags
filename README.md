@@ -2,12 +2,6 @@
 
 A tag plugin designed to enhance your CS2 experience with a dynamic tagging system. Customise and manage player tags effortlessly for a more interactive and engaging game environment.
 
-If you want to donate or need a help about plugin, you can contact me in discord private/server
-
-Discord nickname: schwarper
-
-Discord link : [Discord server](https://discord.gg/4zQfUzjk36)
-
 ## Credits
 
 [Hextags plugin for CSGO](https://github.com/Hexer10/HexTags)
