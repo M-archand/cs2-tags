@@ -53,6 +53,8 @@ public class Tags : BasePlugin, IPluginConfig<Config>
         AddCommandListener("say_team", OnSayTeamCommand, HookMode.Pre);
         AddCommandListener("css_admins_reload", Command_Admins_Reloads, HookMode.Pre);
 
+        RegisterListener<Listeners.OnMapStart>(OnMapStart);
+
         if (hotReload)
             ReloadTags();
     }
@@ -70,12 +72,20 @@ public class Tags : BasePlugin, IPluginConfig<Config>
         RemoveCommandListener("css_admins_reload", Command_Admins_Reloads, HookMode.Pre);
         RemoveCommandListener("say", OnSayCommand, HookMode.Pre);
         RemoveCommandListener("say_team", OnSayTeamCommand, HookMode.Pre);
+
+        RemoveListener<Listeners.OnMapStart>(OnMapStart);
     }
 
     public void OnConfigParsed(Config config)
     {
         config.Settings.Init();
+        config.BuildIndex();
         Config = config;
+    }
+
+    private void OnMapStart(string mapName)
+    {
+        ReloadTags();
     }
 
     public static HookResult Command_Admins_Reloads(CCSPlayerController? player, CommandInfo info)

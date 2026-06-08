@@ -51,28 +51,27 @@ public static partial class TagExtensions
 
     public static Tag GetTag(this CCSPlayerController player)
     {
+        Config config = Instance.Config;
         string steamId = player.SteamID.ToString();
 
-        Tag? steamIdTag = Instance.Config.Tags.FirstOrDefault(t => steamId == t.Role)?.Clone();
-        if (steamIdTag != null)
-            return steamIdTag;
+        if (config.SteamIdTags.TryGetValue(steamId, out Tag? steamIdTag))
+            return steamIdTag.Clone();
 
         SteamID steamID = new(player.SteamID);
 
-        Tag? groupTag = Instance.Config.Tags
-            .Where(t => t.Role is { Length: > 0 } && t.Role[0] == '#' && AdminManager.PlayerInGroup(steamID, t.Role))
-            .Select(t => t.Clone())
-            .FirstOrDefault();
+        foreach (Tag tag in config.GroupTags)
+        {
+            if (AdminManager.PlayerInGroup(steamID, tag.Role!))
+                return tag.Clone();
+        }
 
-        if (groupTag != null)
-            return groupTag;
+        foreach (Tag tag in config.PermissionTags)
+        {
+            if (AdminManager.PlayerHasPermissions(steamID, tag.Role!))
+                return tag.Clone();
+        }
 
-        Tag? permissionTag = Instance.Config.Tags
-            .Where(t => t.Role is { Length: > 0 } && t.Role[0] == '@' && AdminManager.PlayerHasPermissions(steamID, t.Role))
-            .Select(t => t.Clone())
-            .FirstOrDefault();
-
-        return permissionTag ?? Instance.Config.Default.Clone();
+        return config.Default.Clone();
     }
 
     public static bool HasVisibilityPermission(this CCSPlayerController player)
@@ -267,6 +266,7 @@ public static partial class TagExtensions
     {
         Instance.Config.Reload();
         Instance.Config.Settings.Init();
+        Instance.Config.BuildIndex();
     }
 
     public static void ReloadTags()
