@@ -18,6 +18,16 @@ public class TagsAPI : ITagApi
     public event Action<CCSPlayerController, Tag>? OnTagsUpdatedPre;
     public event Action<CCSPlayerController, Tag>? OnTagsUpdatedPost;
 
+    // Drops every subscriber. Called from Unload.
+    internal void ClearSubscribers()
+    {
+        OnMessageProcessPre = null;
+        OnMessageProcess = null;
+        OnMessageProcessPost = null;
+        OnTagsUpdatedPre = null;
+        OnTagsUpdatedPost = null;
+    }
+
     public HookResult MessageProcessPre(MessageProcess messageProcess)
     {
         if (_isProcessingMessagePre)

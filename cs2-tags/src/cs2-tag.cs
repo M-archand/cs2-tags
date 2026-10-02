@@ -1,7 +1,6 @@
 ﻿using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
-using CounterStrikeSharp.API.Core.Capabilities;
 using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Commands;
@@ -35,7 +34,7 @@ public class Tags : BasePlugin, IPluginConfig<Config>
     public override void Load(bool hotReload)
     {
         Instance = this;
-        Capabilities.RegisterPluginCapability(ITagApi.Capability, () => Api);
+        TagsApiHost.Attach(Api);
 
         foreach (string command in Config.Commands.TagsReload)
         {
@@ -74,6 +73,11 @@ public class Tags : BasePlugin, IPluginConfig<Config>
         RemoveCommandListener("say_team", OnSayTeamCommand, HookMode.Pre);
 
         RemoveListener<Listeners.OnMapStart>(OnMapStart);
+
+        TagsApiHost.Detach(Api);
+        Api.ClearSubscribers();
+        PlayerTagsList.Clear();
+        _instance = null;
     }
 
     public void OnConfigParsed(Config config)
