@@ -31,6 +31,11 @@ public class Tags : BasePlugin, IPluginConfig<Config>
     private readonly List<string> _tagsReloadCommands = [];
     private readonly List<string> _visibilityCommands = [];
 
+    // Minimum interval between command-triggered reloads. Each reload is a synchronous
+    // config file read plus O(players) admin lookups, clan-tag writes and client events.
+    private const long ReloadCooldownMs = 2000;
+    private long _lastReloadTick = -ReloadCooldownMs;
+
     public override void Load(bool hotReload)
     {
         Instance = this;
@@ -92,18 +97,41 @@ public class Tags : BasePlugin, IPluginConfig<Config>
         ReloadTags();
     }
 
-    public static HookResult Command_Admins_Reloads(CCSPlayerController? player, CommandInfo info)
+    public HookResult Command_Admins_Reloads(CCSPlayerController? player, CommandInfo info)
     {
-        ReloadConfig();
-        ReloadTags();
+        if (player != null && !AdminManager.PlayerHasPermissions(player, "@css/generic"))
+            return HookResult.Continue;
+
+        if (TryBeginReload())
+        {
+            ReloadConfig();
+            ReloadTags();
+        }
+
         return HookResult.Continue;
     }
 
     [RequiresPermissions("@css/root")]
     public void Command_Tags_Reload(CCSPlayerController? player, CommandInfo info)
     {
+        if (!TryBeginReload())
+        {
+            info.ReplyToCommand(Config.Settings.Tag + Localizer.ForPlayer(player, "Tags were reloaded a moment ago, try again shortly."));
+            return;
+        }
+
         ReloadConfig();
         ReloadTags();
+    }
+
+    private bool TryBeginReload()
+    {
+        long now = Environment.TickCount64;
+        if (now - _lastReloadTick < ReloadCooldownMs)
+            return false;
+
+        _lastReloadTick = now;
+        return true;
     }
 
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
