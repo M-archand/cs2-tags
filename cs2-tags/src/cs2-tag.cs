@@ -1,5 +1,6 @@
 ﻿using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Attributes;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Admin;
@@ -12,6 +13,8 @@ using System.Collections.Concurrent;
 
 namespace Tags;
 
+// 313 = uses toml
+[MinimumApiVersion(313)]
 public class Tags : BasePlugin, IPluginConfig<Config>
 {
     public override string ModuleName => "Tags";
