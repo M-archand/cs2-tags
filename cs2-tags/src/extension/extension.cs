@@ -259,7 +259,17 @@ public static partial class TagExtensions
 
         player.Clan = tag;
         Utilities.SetStateChanged(player, "CCSPlayerController", "m_szClan");
-        new EventNextlevelChanged(false).FireEventToClient(player);
+
+        // nextlevel_changed makes the client re-read m_szClan. FireEventToClient never frees, so free it here.
+        EventNextlevelChanged @event = new(force: true);
+        try
+        {
+            @event.FireEventToClient(player);
+        }
+        finally
+        {
+            @event.Free();
+        }
     }
 
     public static void ReloadConfig()
