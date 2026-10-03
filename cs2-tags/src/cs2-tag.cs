@@ -144,7 +144,7 @@ public class Tags : BasePlugin, IPluginConfig<Config>
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void Command_Visibility(CCSPlayerController? player, CommandInfo info)
     {
-        if (player == null)
+        if (player == null || !player.HasTagIdentity())
         {
             return;
         }
@@ -170,7 +170,7 @@ public class Tags : BasePlugin, IPluginConfig<Config>
     [GameEventHandler]
     public HookResult OnPlayerConnect(EventPlayerConnectFull @event, GameEventInfo info)
     {
-        if (@event.Userid is not CCSPlayerController player || player.IsBot || player.SteamID == 0)
+        if (@event.Userid is not CCSPlayerController player || !player.HasTagIdentity())
             return HookResult.Continue;
 
         PlayerTagsList[player.SteamID] = player.GetTag();
@@ -180,7 +180,7 @@ public class Tags : BasePlugin, IPluginConfig<Config>
     [GameEventHandler(HookMode.Pre)]
     public HookResult OnPlayerDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
     {
-        if (@event.Userid is not CCSPlayerController player || player.IsBot || player.SteamID == 0)
+        if (@event.Userid is not CCSPlayerController player || !player.HasTagIdentity())
             return HookResult.Continue;
 
         PlayerTagsList.TryRemove(player.SteamID, out _);
@@ -190,7 +190,7 @@ public class Tags : BasePlugin, IPluginConfig<Config>
     [GameEventHandler(HookMode.Pre)]
     public HookResult OnPlayerSpawn(EventPlayerSpawn @event, GameEventInfo info)
     {
-        if (@event.Userid is not CCSPlayerController player || player.IsBot || player.SteamID == 0)
+        if (@event.Userid is not CCSPlayerController player || !player.HasTagIdentity())
             return HookResult.Continue;
 
         var tag = GetOrCreatePlayerTag(player, false);
@@ -200,7 +200,7 @@ public class Tags : BasePlugin, IPluginConfig<Config>
 
     public HookResult OnSayCommand(CCSPlayerController? player, CommandInfo info)
     {
-        if (player == null || player.IsBot)
+        if (player == null || !player.HasTagIdentity())
             return HookResult.Continue;
 
         string message = info.GetArg(1);
@@ -212,7 +212,7 @@ public class Tags : BasePlugin, IPluginConfig<Config>
     
     public HookResult OnSayTeamCommand(CCSPlayerController? player, CommandInfo info)
     {
-        if (player == null || player.IsBot)
+        if (player == null || !player.HasTagIdentity())
             return HookResult.Continue;
 
         string message = info.GetArg(1);

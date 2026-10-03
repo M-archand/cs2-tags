@@ -37,8 +37,17 @@ public static partial class TagExtensions
         return ReplaceTags(string.Concat(args), team);
     }
 
+    // Bots and non-authed players report SteamID 0
+    public static bool HasTagIdentity(this CCSPlayerController player)
+    {
+        return player.IsValid && !player.IsBot && player.SteamID != 0;
+    }
+
     public static Tag GetOrCreatePlayerTag(CCSPlayerController player, bool force)
     {
+        if (!player.HasTagIdentity())
+            return Instance.Config.Default.Clone();
+
         if (force || !PlayerTagsList.TryGetValue(player.SteamID, out Tag? tag) || tag is null)
         {
             tag = player.GetTag();
@@ -76,6 +85,9 @@ public static partial class TagExtensions
 
     public static bool HasVisibilityPermission(this CCSPlayerController player)
     {
+        if (!player.HasTagIdentity())
+            return false;
+
         List<string> perms = Instance.Config.Settings.VisibilityPermissions;
         if (perms is not { Count: > 0 })
             return true;
@@ -109,7 +121,7 @@ public static partial class TagExtensions
 
     public static void AddAttribute(this CCSPlayerController player, TagType types, TagPrePost prePost, string newValue)
     {
-        if (!player.IsValid)
+        if (!player.HasTagIdentity())
             return;
 
         Tag tag = GetOrCreatePlayerTag(player, false);
@@ -134,7 +146,7 @@ public static partial class TagExtensions
 
     public static void SetAttribute(this CCSPlayerController player, TagType types, string newValue)
     {
-        if (!player.IsValid)
+        if (!player.HasTagIdentity())
             return;
 
         Tag tag = GetOrCreatePlayerTag(player, false);
@@ -158,7 +170,7 @@ public static partial class TagExtensions
 
     public static string? GetAttribute(this CCSPlayerController player, TagType type)
     {
-        if (!player.IsValid)
+        if (!player.HasTagIdentity())
             return null;
 
         Tag tag = GetOrCreatePlayerTag(player, false);
@@ -175,7 +187,7 @@ public static partial class TagExtensions
 
     public static void ResetAttribute(this CCSPlayerController player, TagType types)
     {
-        if (!player.IsValid)
+        if (!player.HasTagIdentity())
             return;
 
         Tag tag = GetOrCreatePlayerTag(player, false);
@@ -200,7 +212,7 @@ public static partial class TagExtensions
 
     public static bool GetChatSound(this CCSPlayerController player)
     {
-        if (!player.IsValid)
+        if (!player.HasTagIdentity())
             return false;
 
         if (PlayerTagsList.TryGetValue(player.SteamID, out Tag? tag))
@@ -213,7 +225,7 @@ public static partial class TagExtensions
 
     public static void SetChatSound(this CCSPlayerController player, bool value)
     {
-        if (!player.IsValid)
+        if (!player.HasTagIdentity())
             return;
 
         Tag tag = GetOrCreatePlayerTag(player, false);
@@ -225,7 +237,7 @@ public static partial class TagExtensions
 
     public static bool GetVisibility(this CCSPlayerController player)
     {
-        if (!player.IsValid)
+        if (!player.HasTagIdentity())
             return false;
 
         if (PlayerTagsList.TryGetValue(player.SteamID, out Tag? tag))
@@ -238,7 +250,7 @@ public static partial class TagExtensions
 
     public static void SetVisibility(this CCSPlayerController player, bool value)
     {
-        if (!player.IsValid)
+        if (!player.HasTagIdentity())
             return;
 
         Tag tag = GetOrCreatePlayerTag(player, false);
@@ -284,7 +296,7 @@ public static partial class TagExtensions
         List<CCSPlayerController> players = Utilities.GetPlayers();
         foreach (CCSPlayerController player in players)
         {
-            if (player.IsBot || !player.IsValid)
+            if (!player.HasTagIdentity())
                 continue;
 
             // Preserve player tag state across config reloads
