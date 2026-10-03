@@ -26,6 +26,15 @@ public static partial class TagExtensions
         return MyRegex().Replace(message, string.Empty);
     }
 
+    [GeneratedRegex(@"[{}\p{Cc}\u2028\u2029]")]
+    private static partial Regex NameRegex();
+
+    // Drops brace, control and line-break characters
+    public static string SanitizeName(this string name)
+    {
+        return NameRegex().Replace(name, string.Empty);
+    }
+
     public static string ReplaceTags(this string message, CsTeam team)
     {
         return message.ReplaceColorTags()

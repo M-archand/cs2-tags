@@ -261,7 +261,7 @@ public class Tags : BasePlugin, IPluginConfig<Config>
             Player = player,
             Tag = !player.GetVisibility() ? Config.Default.Clone() : tag.Clone(),
             Message = message.RemoveCurlyBraceContent(),
-            PlayerName = player.PlayerName,
+            PlayerName = player.PlayerName.SanitizeName(),
             ChatSound = tag.ChatSound,
             TeamMessage = teamMessage
         };
