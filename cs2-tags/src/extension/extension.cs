@@ -140,6 +140,7 @@ public static partial class TagExtensions
         if ((types & TagType.ChatColor) != 0)
             tag.ChatColor = GetPrePostValue(prePost, tag.ChatColor, newValue);
 
+        PlayerTagOverrides.AddOrUpdate(player.SteamID, types, (_, current) => current | types);
         Tags.Api.TagsUpdatedPost(player, tag);
     }
 
@@ -164,6 +165,7 @@ public static partial class TagExtensions
         if ((types & TagType.ChatColor) != 0)
             tag.ChatColor = newValue;
 
+        PlayerTagOverrides.AddOrUpdate(player.SteamID, types, (_, current) => current | types);
         Tags.Api.TagsUpdatedPost(player, tag);
     }
 
@@ -206,6 +208,7 @@ public static partial class TagExtensions
         if ((types & TagType.ChatColor) != 0)
             tag.ChatColor = defaultTag.ChatColor;
 
+        PlayerTagOverrides.AddOrUpdate(player.SteamID, TagType.None, (_, current) => current & ~types);
         Tags.Api.TagsUpdatedPost(player, tag);
     }
 
@@ -280,6 +283,33 @@ public static partial class TagExtensions
         Instance.Config.BuildIndex();
     }
 
+    // Re-resolves the config tag. Keeps Visibility, ChatSound and API-set attributes of the cached tag
+    public static Tag RefreshPlayerTag(CCSPlayerController player)
+    {
+        if (!player.HasTagIdentity())
+            return Instance.Config.Default.Clone();
+
+        PlayerTagsList.TryGetValue(player.SteamID, out Tag? old);
+        Tag tag = GetOrCreatePlayerTag(player, true);
+        if (old is null)
+            return tag;
+
+        tag.Visibility = old.Visibility;
+        tag.ChatSound = old.ChatSound;
+
+        PlayerTagOverrides.TryGetValue(player.SteamID, out TagType overrides);
+        if ((overrides & TagType.ScoreTag) != 0)
+            tag.ScoreTag = old.ScoreTag;
+        if ((overrides & TagType.ChatTag) != 0)
+            tag.ChatTag = old.ChatTag;
+        if ((overrides & TagType.NameColor) != 0)
+            tag.NameColor = old.NameColor;
+        if ((overrides & TagType.ChatColor) != 0)
+            tag.ChatColor = old.ChatColor;
+
+        return tag;
+    }
+
     public static void ReloadTags()
     {
         List<CCSPlayerController> players = Utilities.GetPlayers();
@@ -288,20 +318,8 @@ public static partial class TagExtensions
             if (!player.HasTagIdentity())
                 continue;
 
-            // Preserve player tag state across config reloads
-            bool visibility = true;
-            bool chatSound = true;
-            if (PlayerTagsList.TryGetValue(player.SteamID, out Tag? old) && old is not null)
-            {
-                visibility = old.Visibility;
-                chatSound = old.ChatSound;
-            }
-
-            Tag tag = GetOrCreatePlayerTag(player, true);
-            tag.Visibility = visibility;
-            tag.ChatSound = chatSound;
-
-            player.SetScoreTag(visibility ? (tag.ScoreTag ?? string.Empty) : string.Empty);
+            Tag tag = RefreshPlayerTag(player);
+            player.SetScoreTag(tag.Visibility ? (tag.ScoreTag ?? string.Empty) : string.Empty);
         }
     }
 }

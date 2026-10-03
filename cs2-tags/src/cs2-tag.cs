@@ -23,6 +23,8 @@ public class Tags : BasePlugin, IPluginConfig<Config>
     public override string ModuleAuthor => "schwarper, Marchand";
 
     internal static readonly ConcurrentDictionary<ulong, Tag> PlayerTagsList = new();
+    // Attribute types set through ITagApi, kept across tag refreshes until ResetAttribute or disconnect
+    internal static readonly ConcurrentDictionary<ulong, TagType> PlayerTagOverrides = new();
     internal static readonly TagsAPI Api = new();
     private static Tags? _instance;
     internal static Tags Instance
@@ -86,6 +88,7 @@ public class Tags : BasePlugin, IPluginConfig<Config>
         TagsApiHost.Detach(Api);
         Api.ClearSubscribers();
         PlayerTagsList.Clear();
+        PlayerTagOverrides.Clear();
         _instance = null;
     }
 
@@ -173,7 +176,8 @@ public class Tags : BasePlugin, IPluginConfig<Config>
         if (@event.Userid is not CCSPlayerController player || !player.HasTagIdentity())
             return HookResult.Continue;
 
-        PlayerTagsList[player.SteamID] = player.GetTag();
+        // Fires again after a map change, RefreshPlayerTag keeps state of players who stayed connected
+        RefreshPlayerTag(player);
         return HookResult.Continue;
     }
 
@@ -184,6 +188,7 @@ public class Tags : BasePlugin, IPluginConfig<Config>
             return HookResult.Continue;
 
         PlayerTagsList.TryRemove(player.SteamID, out _);
+        PlayerTagOverrides.TryRemove(player.SteamID, out _);
         return HookResult.Continue;
     }
 
