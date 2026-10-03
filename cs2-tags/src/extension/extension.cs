@@ -198,7 +198,7 @@ public static partial class TagExtensions
         if ((types & TagType.ScoreTag) != 0)
         {
             tag.ScoreTag = defaultTag.ScoreTag;
-            player.SetScoreTag(defaultTag.ScoreTag);
+            player.SetScoreTag(defaultTag.ScoreTag ?? string.Empty);
         }
         if ((types & TagType.ChatTag) != 0)
             tag.ChatTag = defaultTag.ChatTag;
@@ -257,7 +257,7 @@ public static partial class TagExtensions
 
         Tags.Api.TagsUpdatedPre(player, tag);
         tag.Visibility = value;
-        player.SetScoreTag(value ? player.GetAttribute(TagType.ScoreTag) : string.Empty);
+        player.SetScoreTag(value ? (player.GetAttribute(TagType.ScoreTag) ?? string.Empty) : string.Empty);
         Tags.Api.TagsUpdatedPost(player, tag);
     }
 
@@ -312,7 +312,7 @@ public static partial class TagExtensions
             tag.Visibility = visibility;
             tag.ChatSound = chatSound;
 
-            player.SetScoreTag(visibility ? tag.ScoreTag : string.Empty);
+            player.SetScoreTag(visibility ? (tag.ScoreTag ?? string.Empty) : string.Empty);
         }
     }
 }

@@ -22,10 +22,10 @@ public class Tags : BasePlugin, IPluginConfig<Config>
     public override string ModuleVersion => "1.2.0";
     public override string ModuleAuthor => "schwarper, Marchand";
 
-    public static readonly ConcurrentDictionary<ulong, Tag> PlayerTagsList = new();
-    public static readonly TagsAPI Api = new();
+    internal static readonly ConcurrentDictionary<ulong, Tag> PlayerTagsList = new();
+    internal static readonly TagsAPI Api = new();
     private static Tags? _instance;
-    public static Tags Instance
+    internal static Tags Instance
     {
         get => _instance ?? throw new InvalidOperationException("Tags.Instance accessed before Load() completed.");
         private set => _instance = value;
@@ -224,13 +224,21 @@ public class Tags : BasePlugin, IPluginConfig<Config>
 
     private static bool IsCssChatCommand(string? text)
     {
-        if (string.IsNullOrEmpty(text)) return false;
-        var span = text.AsSpan();
-        int i = 0;
-        while (i < span.Length && char.IsWhiteSpace(span[i])) i++;
-        if (i >= span.Length) return false;
-        char c = span[i];
-        return c == '!' || c == '/' || c == '.';
+        if (string.IsNullOrEmpty(text))
+            return false;
+
+        return StartsWithAny(text, CoreConfig.PublicChatTrigger) || StartsWithAny(text, CoreConfig.SilentChatTrigger);
+    }
+
+    private static bool StartsWithAny(string text, IEnumerable<string> prefixes)
+    {
+        foreach (string prefix in prefixes)
+        {
+            if (prefix.Length > 0 && text.StartsWith(prefix, StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
     }
 
     private HookResult ProcessChatCommand(CCSPlayerController player, string message, bool teamMessage)

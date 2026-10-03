@@ -18,6 +18,7 @@ public abstract class Tags
         {
             return new Tag
             {
+                Role = Role,
                 ScoreTag = ScoreTag,
                 ChatTag = ChatTag,
                 ChatColor = ChatColor,
