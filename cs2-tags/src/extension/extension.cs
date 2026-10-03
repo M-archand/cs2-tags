@@ -48,12 +48,11 @@ public static partial class TagExtensions
         if (!player.HasTagIdentity())
             return Instance.Config.Default.Clone();
 
-        if (force || !PlayerTagsList.TryGetValue(player.SteamID, out Tag? tag) || tag is null)
-        {
-            tag = player.GetTag();
-            PlayerTagsList[player.SteamID] = tag;
-        }
+        if (!force)
+            return PlayerTagsList.GetOrAdd(player.SteamID, static (_, p) => p.GetTag(), player);
 
+        Tag tag = player.GetTag();
+        PlayerTagsList[player.SteamID] = tag;
         return tag;
     }
 
@@ -215,12 +214,7 @@ public static partial class TagExtensions
         if (!player.HasTagIdentity())
             return false;
 
-        if (PlayerTagsList.TryGetValue(player.SteamID, out Tag? tag))
-            return tag.ChatSound;
-
-        Tag defaultTag = player.GetTag();
-        PlayerTagsList[player.SteamID] = defaultTag;
-        return defaultTag.ChatSound;
+        return GetOrCreatePlayerTag(player, false).ChatSound;
     }
 
     public static void SetChatSound(this CCSPlayerController player, bool value)
@@ -240,12 +234,7 @@ public static partial class TagExtensions
         if (!player.HasTagIdentity())
             return false;
 
-        if (PlayerTagsList.TryGetValue(player.SteamID, out Tag? tag))
-            return tag.Visibility;
-
-        Tag defaultTag = player.GetTag();
-        PlayerTagsList[player.SteamID] = defaultTag;
-        return defaultTag.Visibility;
+        return GetOrCreatePlayerTag(player, false).Visibility;
     }
 
     public static void SetVisibility(this CCSPlayerController player, bool value)
