@@ -2,6 +2,14 @@
 
 A tag plugin designed to enhance your CS2 experience with a dynamic tagging system. Customise and manage player tags effortlessly for a more interactive and engaging game environment.
 
+## Installation
+
+1. Copy `plugins/cs2-tags/`, `shared/TagsApi/` and `configs/plugins/cs2-tags/` from the release zip into `addons/counterstrikesharp/`.
+2. Start the server once. CounterStrikeSharp copies `cs2-tags.example.toml` to `cs2-tags.toml` in the same folder; edit that file.
+3. Run `css_tags_reload` (needs `@css/root`) after editing. `css_admins_reload` also refreshes tags after admin changes.
+
+If `cs2-tags.toml` has no `[[Tags]]` entries the plugin logs a warning and every player gets the `[Default]` tag.
+
 ## Credits
 
 [Hextags plugin for CSGO](https://github.com/Hexer10/HexTags)

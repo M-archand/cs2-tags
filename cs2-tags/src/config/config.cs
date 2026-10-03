@@ -10,7 +10,7 @@ public class Config : BasePluginConfig
 {
     public Settings Settings { get; set; } = new();
     public Commands Commands { get; set; } = new();
-    public Tag Default { get; set; } = new();
+    public Tag Default { get; set; } = new() { ScoreTag = string.Empty, ChatTag = "{Grey}[Player]", ChatColor = "{White}", NameColor = "{TeamColor}" };
     public List<Tag> Tags { get; set; } = [];
 
     // Compiled index, rebuilt only when the config changes (load + reload)
@@ -51,12 +51,12 @@ public class Config : BasePluginConfig
 
 public class Settings
 {
-    public string Tag { get; set; } = string.Empty;
-    public string DeadName { get; set; } = string.Empty;
-    public string NoneName { get; set; } = string.Empty;
-    public string SpecName { get; set; } = string.Empty;
-    public string TName { get; set; } = string.Empty;
-    public string CTName { get; set; } = string.Empty;
+    public string Tag { get; set; } = "{Red}[CSS] ";
+    public string DeadName { get; set; } = "☠";
+    public string NoneName { get; set; } = "{White}(NONE)";
+    public string SpecName { get; set; } = "{Purple}(SPEC)";
+    public string TName { get; set; } = "{Yellow}(T)";
+    public string CTName { get; set; } = "{Blue}(CT)";
     public List<string> VisibilityPermissions { get; set; } = ["@css/admin", "@css/root"];
     public Dictionary<CsTeam, string> TeamNames = [];
 
@@ -76,6 +76,6 @@ public class Settings
 
 public class Commands
 {
-    public string[] TagsReload { get; set; } = [];
-    public string[] Visibility { get; set; } = [];
+    public string[] TagsReload { get; set; } = ["css_tags_reload"];
+    public string[] Visibility { get; set; } = ["css_toggletags", "css_visibility"];
 }

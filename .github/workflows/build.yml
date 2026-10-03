@@ -50,9 +50,9 @@ jobs:
           FOLDER="cs2-tags-v${VERSION}"
 
           # cs2-tags csprojs emit the CSS install tree into BuildOutput/:
-          #   plugins/cs2-tags/        -> plugin dll + deps + example config
+          #   plugins/cs2-tags/        -> plugin dll + deps
           #   shared/TagsApi/          -> API dll (consumed by other plugins)
-          #   configs/plugins/cs2-tags/-> cs2-tags-example.toml
+          #   configs/plugins/cs2-tags/-> cs2-tags.example.toml (CSS copies it to cs2-tags.toml on first load)
           if [ ! -f BuildOutput/plugins/cs2-tags/cs2-tags.dll ]; then
             echo "::error::cs2-tags.dll not found in BuildOutput/plugins/cs2-tags after build"
             exit 1

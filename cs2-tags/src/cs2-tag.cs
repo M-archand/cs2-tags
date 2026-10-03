@@ -9,6 +9,7 @@ using CounterStrikeSharp.API.Modules.Utils;
 using TagsApi;
 using static Tags.TagExtensions;
 using static TagsApi.Tags;
+using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 
 namespace Tags;
@@ -93,6 +94,9 @@ public class Tags : BasePlugin, IPluginConfig<Config>
         config.Settings.Init();
         config.BuildIndex();
         Config = config;
+
+        if (config.Tags.Count == 0)
+            Logger.LogWarning("No [[Tags]] entries in cs2-tags.toml; every player gets the [Default] tag.");
     }
 
     private void OnMapStart(string mapName)
