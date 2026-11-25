@@ -286,7 +286,7 @@ public class Tags : BasePlugin, IPluginConfig<Config>
             return hookResult;
 
         // Send the formatted message
-        string formattedMessage = $"{messageProcess.PlayerName}{ChatColors.White}: {messageProcess.Message}";
+        string formattedMessage = $"{messageProcess.PlayerName}{ChatColors.White}{(messageProcess.Message?.StartsWith(' ') == true ? ":" : ": ")}{messageProcess.Message}";
 
         if (messageProcess.TeamMessage)
         {
