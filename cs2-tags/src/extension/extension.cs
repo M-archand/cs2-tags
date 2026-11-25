@@ -38,7 +38,7 @@ public static partial class TagExtensions
     public static string ReplaceTags(this string message, CsTeam team)
     {
         return message.ReplaceColorTags()
-                      .Replace("{TeamColor}", ChatColors.ForTeam(team).ToString());
+                      .Replace("{TeamColor}", ChatColors.ForTeam(team).ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
     public static string FormatMessage(CsTeam team, params string[] args)
