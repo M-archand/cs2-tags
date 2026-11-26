@@ -1,6 +1,7 @@
 ﻿using CounterStrikeSharp.API.Core;
 using TagsApi;
 using static TagsApi.Tags;
+using Microsoft.Extensions.Logging;
 
 namespace Tags;
 
@@ -37,7 +38,7 @@ public class TagsAPI : ITagApi
 
         try
         {
-            return InvokeHighest(OnMessageProcessPre, messageProcess);
+            return InvokeHighest(OnMessageProcessPre, nameof(OnMessageProcessPre), messageProcess);
         }
         finally
         {
@@ -54,7 +55,7 @@ public class TagsAPI : ITagApi
 
         try
         {
-            return InvokeHighest(OnMessageProcess, messageProcess);
+            return InvokeHighest(OnMessageProcess, nameof(OnMessageProcess), messageProcess);
         }
         finally
         {
@@ -63,17 +64,24 @@ public class TagsAPI : ITagApi
     }
 
     // Return highest HookResult across all message subscribers instead of last
-    private static HookResult InvokeHighest(Func<MessageProcess, HookResult>? handlers, MessageProcess messageProcess)
+    private static HookResult InvokeHighest(Func<MessageProcess, HookResult>? handlers, string eventName, MessageProcess messageProcess)
     {
         if (handlers is null)
             return HookResult.Continue;
 
         HookResult result = HookResult.Continue;
-        foreach (Func<MessageProcess, HookResult> handler in handlers.GetInvocationList().Cast<Func<MessageProcess, HookResult>>())
+        foreach (Func<MessageProcess, HookResult> handler in Delegate.EnumerateInvocationList(handlers))
         {
-            HookResult current = handler(messageProcess);
-            if (current > result)
-                result = current;
+            try
+            {
+                HookResult current = handler(messageProcess);
+                if (current > result)
+                    result = current;
+            }
+            catch (Exception exception)
+            {
+                LogSubscriberError(exception, eventName, handler);
+            }
         }
 
         return result;
@@ -88,7 +96,17 @@ public class TagsAPI : ITagApi
 
         try
         {
-            OnMessageProcessPost?.Invoke(messageProcess);
+            foreach (Action<MessageProcess> handler in Delegate.EnumerateInvocationList(OnMessageProcessPost))
+            {
+                try
+                {
+                    handler(messageProcess);
+                }
+                catch (Exception exception)
+                {
+                    LogSubscriberError(exception, nameof(OnMessageProcessPost), handler);
+                }
+            }
         }
         finally
         {
@@ -105,7 +123,7 @@ public class TagsAPI : ITagApi
 
         try
         {
-            OnTagsUpdatedPre?.Invoke(player, tag);
+            InvokeTagsUpdated(OnTagsUpdatedPre, nameof(OnTagsUpdatedPre), player, tag);
         }
         finally
         {
@@ -122,12 +140,32 @@ public class TagsAPI : ITagApi
 
         try
         {
-            OnTagsUpdatedPost?.Invoke(player, tag);
+            InvokeTagsUpdated(OnTagsUpdatedPost, nameof(OnTagsUpdatedPost), player, tag);
         }
         finally
         {
             _isProcessingTagsUpdatedPost = false;
         }
+    }
+
+    private static void InvokeTagsUpdated(Action<CCSPlayerController, Tag>? handlers, string eventName, CCSPlayerController player, Tag tag)
+    {
+        foreach (Action<CCSPlayerController, Tag> handler in Delegate.EnumerateInvocationList(handlers))
+        {
+            try
+            {
+                handler(player, tag);
+            }
+            catch (Exception exception)
+            {
+                LogSubscriberError(exception, eventName, handler);
+            }
+        }
+    }
+
+    private static void LogSubscriberError(Exception exception, string eventName, Delegate handler)
+    {
+        Tags.Instance.Logger.LogError(exception, "ITagApi subscriber {Type}.{Method} threw in {Event}", handler.Method.DeclaringType?.FullName, handler.Method.Name, eventName);
     }
 
     public void AddAttribute(CCSPlayerController player, TagType types, TagPrePost prePost, string newValue)
