@@ -271,7 +271,7 @@ public class Tags : BasePlugin, IPluginConfig<Config>
         if (hookResult >= HookResult.Handled)
             return hookResult;
 
-        string deadname = player.PawnIsAlive ? string.Empty : Config.Settings.DeadName;
+        string deadname = player.PawnIsAlive || player.Team is not (CsTeam.Terrorist or CsTeam.CounterTerrorist) ? string.Empty : Config.Settings.DeadName;
         string teamname = messageProcess.TeamMessage ? player.Team.Name() : string.Empty;
 
         Tag playerData = messageProcess.Tag;
