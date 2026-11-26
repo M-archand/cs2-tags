@@ -174,4 +174,9 @@ public class TagsAPI : ITagApi
     {
         TagExtensions.ReloadTags();
     }
+
+    public void ReloadTags(CCSPlayerController player)
+    {
+        TagExtensions.ReloadTags(player);
+    }
 }

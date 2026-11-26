@@ -37,4 +37,6 @@ public interface ITagApi
     public void SetPlayerVisibility(CCSPlayerController player, bool value);
     /// <summary>Main thread only.</summary>
     public void ReloadTags();
+    /// <summary>Main thread only.</summary>
+    public void ReloadTags(CCSPlayerController player);
 }

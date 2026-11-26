@@ -5,6 +5,7 @@ using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Commands;
+using CounterStrikeSharp.API.Modules.Entities;
 using CounterStrikeSharp.API.Modules.Utils;
 using TagsApi;
 using static Tags.TagExtensions;
@@ -41,6 +42,7 @@ public class Tags : BasePlugin, IPluginConfig<Config>
     // config file read plus O(players) admin lookups, clan-tag writes and client events.
     private const long ReloadCooldownMs = 2000;
     private long _lastReloadTick = -ReloadCooldownMs;
+    private long _lastGroupsReloadTick = -ReloadCooldownMs;
 
     public override void Load(bool hotReload)
     {
@@ -62,8 +64,10 @@ public class Tags : BasePlugin, IPluginConfig<Config>
         AddCommandListener("say", OnSayCommand, HookMode.Pre);
         AddCommandListener("say_team", OnSayTeamCommand, HookMode.Pre);
         AddCommandListener("css_admins_reload", Command_Admins_Reloads, HookMode.Pre);
+        AddCommandListener("css_groups_reload", Command_Groups_Reload, HookMode.Pre);
 
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
+        RegisterListener<Listeners.OnClientAuthorized>(OnClientAuthorized);
 
         if (hotReload)
             ReloadTags();
@@ -80,10 +84,12 @@ public class Tags : BasePlugin, IPluginConfig<Config>
         _visibilityCommands.Clear();
 
         RemoveCommandListener("css_admins_reload", Command_Admins_Reloads, HookMode.Pre);
+        RemoveCommandListener("css_groups_reload", Command_Groups_Reload, HookMode.Pre);
         RemoveCommandListener("say", OnSayCommand, HookMode.Pre);
         RemoveCommandListener("say_team", OnSayTeamCommand, HookMode.Pre);
 
         RemoveListener<Listeners.OnMapStart>(OnMapStart);
+        RemoveListener<Listeners.OnClientAuthorized>(OnClientAuthorized);
 
         TagsApiHost.Detach(Api);
         Api.ClearSubscribers();
@@ -107,12 +113,20 @@ public class Tags : BasePlugin, IPluginConfig<Config>
         ReloadTags();
     }
 
+    private void OnClientAuthorized(int playerSlot, SteamID steamId)
+    {
+        // No-op while the slot has no fully connected controller, player_connect_full resolves the tag then
+        CCSPlayerController? player = Utilities.GetPlayerFromSlot(playerSlot);
+        if (player != null)
+            ReloadTags(player);
+    }
+
     public HookResult Command_Admins_Reloads(CCSPlayerController? player, CommandInfo info)
     {
         if (player != null && !AdminManager.PlayerHasPermissions(player, "@css/generic"))
             return HookResult.Continue;
 
-        if (TryBeginReload())
+        if (TryBeginReload(ref _lastReloadTick))
         {
             ReloadConfig();
             ReloadTags();
@@ -121,10 +135,22 @@ public class Tags : BasePlugin, IPluginConfig<Config>
         return HookResult.Continue;
     }
 
+    public HookResult Command_Groups_Reload(CCSPlayerController? player, CommandInfo info)
+    {
+        if (player != null && !AdminManager.PlayerHasPermissions(player, "@css/generic"))
+            return HookResult.Continue;
+
+        // Tags only, a groups reload does not change the tags config
+        if (TryBeginReload(ref _lastGroupsReloadTick))
+            ReloadTags();
+
+        return HookResult.Continue;
+    }
+
     [RequiresPermissions("@css/root")]
     public void Command_Tags_Reload(CCSPlayerController? player, CommandInfo info)
     {
-        if (!TryBeginReload())
+        if (!TryBeginReload(ref _lastReloadTick))
         {
             info.ReplyToCommand(Config.Settings.Tag + Localizer.ForPlayer(player, "Tags were reloaded a moment ago, try again shortly."));
             return;
@@ -134,13 +160,13 @@ public class Tags : BasePlugin, IPluginConfig<Config>
         ReloadTags();
     }
 
-    private bool TryBeginReload()
+    private static bool TryBeginReload(ref long lastTick)
     {
         long now = Environment.TickCount64;
-        if (now - _lastReloadTick < ReloadCooldownMs)
+        if (now - lastTick < ReloadCooldownMs)
             return false;
 
-        _lastReloadTick = now;
+        lastTick = now;
         return true;
     }
 

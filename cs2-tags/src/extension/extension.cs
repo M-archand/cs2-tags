@@ -323,12 +323,16 @@ public static partial class TagExtensions
     {
         List<CCSPlayerController> players = Utilities.GetPlayers();
         foreach (CCSPlayerController player in players)
-        {
-            if (!player.HasTagIdentity())
-                continue;
+            ReloadTags(player);
+    }
 
-            Tag tag = RefreshPlayerTag(player);
-            player.SetScoreTag(tag.Visibility ? (tag.ScoreTag ?? string.Empty) : string.Empty);
-        }
+    // Connected check mirrors Utilities.GetPlayers(), so direct callers skip the same players as ReloadTags()
+    public static void ReloadTags(CCSPlayerController player)
+    {
+        if (!player.HasTagIdentity() || player.Connected != PlayerConnectedState.Connected)
+            return;
+
+        Tag tag = RefreshPlayerTag(player);
+        player.SetScoreTag(tag.Visibility ? (tag.ScoreTag ?? string.Empty) : string.Empty);
     }
 }
